@@ -2,7 +2,7 @@ from numba import jit
 import numpy as np
 from scipy import ndimage as ndi
 from skimage.feature import peak_local_max
-from metpy.calc import get_wind_dir
+from metpy.calc import wind_direction
 from metpy.units import units
 import numpy.ma as ma
 
@@ -36,7 +36,7 @@ def get_rotation(VEL, REF, rlons_2d, rlats_2d, bin_size=7):
 
     y_shp, x_shp = np.meshgrid(x_shape, x_shape) 
     print(y_shp)
-    azim = get_wind_dir(250*units('m/s')-x_shp*units('m/s'), y_shp*units('m/s')-250*units('m/s'))+ 90*units('degree')
+    azim = wind_direction(250*units('m/s')-x_shp*units('m/s'), y_shp*units('m/s')-250*units('m/s'))+ 90*units('degree')
     azim = azim + 270*units('degree')
     azim[azim > 360*units('degree')] = azim[azim > 360*units('degree')]- 360 * units('degree')
     print(azim.shape)
