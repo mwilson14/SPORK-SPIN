@@ -41,25 +41,29 @@ def kdp_objects(kdpc,KDPmasked,ax,f,time_start,month,d_beg,h_beg,min_beg,sec_beg
                                                        max_lons_c[i], max_lats_c[i])
                                 dist_kdp[i] = distance_kdp[2]/1000.
 
-                    if np.min(np.asarray(dist_kdp)) < 15.0:
-                        kdp_path = polypath
-                        kdp_areas.append((pr_area))
-                        kdp_centroid_lon.append((polygon.centroid.x))
-                        kdp_centroid_lat.append((polygon.centroid.y))
-                        kdp_storm_lon.append((max_lons_c[np.where(dist_kdp == np.min(dist_kdp))[0][0]]))
-                        kdp_storm_lat.append((max_lats_c[np.where(dist_kdp == np.min(dist_kdp))[0][0]]))
-                        kdp_max.append((np.max(KDPmasked[mask_kdp])))
-                        patch = PathPatch(polypath, facecolor='green', alpha=.5, edgecolor = 'green', linewidth = 3)
-                        ax.add_patch(patch)
-                        #Add polygon to placefile
-                        f.write('TimeRange: '+str(time_start.year)+'-'+str(month)+'-'+str(d_beg)+'T'+str(h_beg)+':'+str(min_beg)+':'+str(sec_beg)+'Z '+str(time_start.year)+'-'+str(month)+'-'+str(d_end)+'T'+str(h_end)+':'+str(min_end)+':'+str(sec_end)+'Z')
-                        f.write('\n')
-                        f.write("Color: 000 139 000 \n")
-                        f.write('Line: 3, 0, "KDP Foot Outline" \n')
-                        for i in range(len(kdp_path.vertices)):
-                            f.write("%.5f" %(kdp_path.vertices[i][1]))
-                            f.write(", ")
-                            f.write("%.5f" %(kdp_path.vertices[i][0]))
+                    try:
+                        if np.min(np.asarray(dist_kdp)) < 15.0 and np.max((np.max(KDPmasked[mask_kdp])) > 1.5):
+                            kdp_path = polypath
+                            kdp_areas.append((pr_area))
+                            kdp_centroid_lon.append((polygon.centroid.x))
+                            kdp_centroid_lat.append((polygon.centroid.y))
+                            kdp_storm_lon.append((max_lons_c[np.where(dist_kdp == np.min(dist_kdp))[0][0]]))
+                            kdp_storm_lat.append((max_lats_c[np.where(dist_kdp == np.min(dist_kdp))[0][0]]))
+                            kdp_max.append((np.max(KDPmasked[mask_kdp])))
+                            patch = PathPatch(polypath, facecolor='green', alpha=.5, edgecolor = 'green', linewidth = 3)
+                            ax.add_patch(patch)
+                            #Add polygon to placefile
+                            f.write('TimeRange: '+str(time_start.year)+'-'+str(month)+'-'+str(d_beg)+'T'+str(h_beg)+':'+str(min_beg)+':'+str(sec_beg)+'Z '+str(time_start.year)+'-'+str(month)+'-'+str(d_end)+'T'+str(h_end)+':'+str(min_end)+':'+str(sec_end)+'Z')
                             f.write('\n')
-                        f.write("End: \n \n")
+                            f.write("Color: 000 139 000 \n")
+                            f.write('Line: 3, 0, "KDP Foot Outline" \n')
+                            for i in range(len(kdp_path.vertices)):
+                                f.write("%.5f" %(kdp_path.vertices[i][1]))
+                                f.write(", ")
+                                f.write("%.5f" %(kdp_path.vertices[i][0]))
+                                f.write('\n')
+                            f.write("End: \n \n")
+                            f.flush()
+                    except:
+                         print('kdp fail')
     return kdp_areas,kdp_centroid_lon,kdp_centroid_lat,kdp_storm_lon,kdp_storm_lat,kdp_max,ax,f

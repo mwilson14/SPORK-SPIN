@@ -9,7 +9,7 @@ import numpy.ma as ma
 @jit(nopython=True)
 def calc_regr(A_x, A_y, VEL, xregr_array, yregr_array):
     #Create a definition to use with numba
-    for level in [4,6,8,10]:
+    for level in [4,12,20,28]:
         for i in range(3, 496, 1):
             for j in range(3, 496, 1):
 
@@ -50,17 +50,17 @@ def get_rotation(VEL, REF, rlons_2d, rlats_2d, bin_size=7):
     az_masked = ma.filled(az_masked, fill_value=-2)
     
     dist = 5
-    thresh = 1.5
+    thresh = 0.002 * 493
     #image_max = ndi.maximum_filter(az_masked[lev, :, :], size=dist, mode='constant')
     coordinates4 = peak_local_max(az_masked[4, :, :], min_distance=dist, threshold_abs=thresh)
-    coordinates6 = peak_local_max(az_masked[6, :, :], min_distance=dist, threshold_abs=thresh)
-    coordinates8 = peak_local_max(az_masked[8, :, :], min_distance=dist, threshold_abs=thresh)
-    coordinates10 = peak_local_max(az_masked[10, :, :], min_distance=dist, threshold_abs=thresh)
+    coordinates6 = peak_local_max(az_masked[12, :, :], min_distance=dist, threshold_abs=thresh)
+    coordinates8 = peak_local_max(az_masked[20, :, :], min_distance=dist, threshold_abs=thresh)
+    coordinates10 = peak_local_max(az_masked[28, :, :], min_distance=dist, threshold_abs=thresh)
     
     shear_maxes1 = az_masked[4,:,:][coordinates4[:,0], coordinates4[:,1]]
-    shear_maxes15 = az_masked[6,:,:][coordinates6[:,0], coordinates6[:,1]]
-    shear_maxes2 = az_masked[8,:,:][coordinates8[:,0], coordinates8[:,1]]
-    shear_maxes25 = az_masked[10,:,:][coordinates10[:,0], coordinates10[:,1]]
+    shear_maxes15 = az_masked[12,:,:][coordinates6[:,0], coordinates6[:,1]]
+    shear_maxes2 = az_masked[20,:,:][coordinates8[:,0], coordinates8[:,1]]
+    shear_maxes25 = az_masked[28,:,:][coordinates10[:,0], coordinates10[:,1]]
 
     shear_lats1 = rlats_2d[:,:][coordinates4[:,0], coordinates4[:,1]]
     shear_lats15 = rlats_2d[:,:][coordinates6[:,0], coordinates6[:,1]]

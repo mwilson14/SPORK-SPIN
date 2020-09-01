@@ -55,8 +55,10 @@ def zdrarc(zdrc,ZDRmasked,CC,REF,grad_ffd,grad_mag,KDP,forest_loaded,ax,f,time_s
                         polygon = polygon_new
                     else:
                         polygon = polygon.difference(polygon_new)
-
-                pr_area = (transform(proj, polygon).area * units('m^2')).to('km^2')
+                try:
+                    pr_area = (transform(proj, polygon).area * units('m^2')).to('km^2')
+                except:
+                    continue
                 boundary = np.asarray(polygon.boundary.xy)
                 polypath = Path(boundary.transpose())
                 coord_map = np.vstack((rlons[0,:,:].flatten(), rlats[0,:,:].flatten())).T 
@@ -143,6 +145,7 @@ def zdrarc(zdrc,ZDRmasked,CC,REF,grad_ffd,grad_mag,KDP,forest_loaded,ax,f,time_s
                                 f.write('\n')
 
                             f.write("End: \n \n")
+                            f.flush()
                             if (((max_lons_c[np.where(dist == np.min(dist))[0][0]]) in max_lons_c[tracking_ind]) and ((max_lats_c[np.where(dist == np.min(dist))[0][0]]) in max_lats_c[tracking_ind])):
                                 zdr_outlines.append(polypath)
 
