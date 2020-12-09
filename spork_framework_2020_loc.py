@@ -53,7 +53,7 @@ from zdr_col_section import zdrcol
 from rotation_stuff import get_rotation
 from rotation_matching_qc import rot_storm_matcher_qc
 
-def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev1, big_storm, zero_z_trigger, storm_to_track, year, month, day, hour, start_min, duration, calibration, station, h_Z0C, Bunkers_m, track_dis=10, GR_mins=5.0):
+def multi_case_algorithm_2020_loc(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev1, big_storm, zero_z_trigger, storm_to_track, year, month, day, hour, start_min, duration, calibration, station, h_Z0C, localfolder, Bunkers_m, track_dis=10, GR_mins=5.0):
     #Set vector perpendicular to FFD Z gradient
     storm_relative_dir = storm_relative_dir
     #Set storm motion
@@ -1134,7 +1134,7 @@ def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev
         except:
             print('oops storm')
         alt_levs = [1000, 2000]
-        plt.savefig('Machine_Learning/SPORK_RFN'+station+str(time_start.year)+str(time_start.month)+str(day)+str(hour)+str(minute)+'.png')
+        plt.savefig('Machine_Learning/SPORK_PAPER'+station+str(time_start.year)+str(time_start.month)+str(day)+str(hour)+str(minute)+'.png')
         print('Figure Saved')
         print(p_rot1)
         print(p_rot15)
