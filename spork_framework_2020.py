@@ -1133,7 +1133,7 @@ def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev
         except:
             print('oops storm')
         alt_levs = [1000, 2000]
-        plt.savefig('Machine_Learning/SPORK_RFN'+station+str(time_start.year)+str(time_start.month)+str(day)+str(hour)+str(minute)+'.png')
+        plt.savefig('Machine_Learning/SPORK_PAPER'+station+str(time_start.year)+str(time_start.month)+str(day)+str(hour)+str(minute)+'.png')
         print('Figure Saved')
         print(p_rot1)
         print(p_rot15)
