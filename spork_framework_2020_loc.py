@@ -273,9 +273,11 @@ def multi_case_algorithm_2020_loc(storm_relative_dir, zdrlev, kdplev, REFlev, RE
         refc = ax.contour(rlons[0,:,:],rlats[0,:,:],smoothed_ref,REFlev, alpha=.01)
 
         #Set up projection for area calculations
+        proj_old = partial(pyproj.transform, pyproj.Proj(init='epsg:4326'),
+                           pyproj.Proj(init='epsg:3857'))
         proj = partial(pyproj.transform, pyproj.Proj(init='epsg:4326'),
-                   pyproj.Proj(init='epsg:3857'))
-
+                           pyproj.Proj("+proj=aea +lat_1=37.0 +lat_2=41.0 +lat_0=39.0 +lon_0=-106.55"))
+                
         #Main part of storm tracking algorithm starts by looping through all contours looking for Z centroids
         #This method for breaking contours into polygons based on this stack overflow tutorial:
         #https://gis.stackexchange.com/questions/99917/converting-matplotlib-contour-objects-to-shapely-objects
