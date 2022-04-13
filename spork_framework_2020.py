@@ -100,8 +100,8 @@ def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev
     f.write("Refresh: 8 \n \n")
 
     #Load ML algorithm
-    forest_loaded = pickle.load(open('NewDataRandomForest.pkl', 'rb'))
-    forest_loaded_col = pickle.load(open('NewDataRandomForest_COLUMNS.pkl', 'rb'))
+    forest_loaded = pickle.load(open('NewData2022RandomForest.pkl', 'rb'))
+    forest_loaded_col = pickle.load(open('NewDataRandomForest_2022COLUMNS.pkl', 'rb'))
     forest_loaded_mesos = pickle.load(open('NewDataRandomForest_MESOS.pkl', 'rb'))
 
     #Actual algorithm code starts here

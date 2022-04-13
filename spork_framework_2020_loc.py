@@ -101,15 +101,18 @@ def multi_case_algorithm_2020_loc(storm_relative_dir, zdrlev, kdplev, REFlev, RE
     f.write("Refresh: 8 \n \n")
 
     #Load ML algorithm
-    forest_loaded = pickle.load(open('NewDataRandomForest.pkl', 'rb'))
-    forest_loaded_col = pickle.load(open('NewDataRandomForest_COLUMNS.pkl', 'rb'))
+    forest_loaded = pickle.load(open('NewData2022RandomForest.pkl', 'rb'))
+    forest_loaded_col = pickle.load(open('NewDataRandomForest_2022COLUMNS.pkl', 'rb'))
     forest_loaded_mesos = pickle.load(open('NewDataRandomForest_MESOS.pkl', 'rb'))
 
     #Actual algorithm code starts here
     #Create a list for the lists of arc outlines
     zdr_out_list = []
     tracks_dataframe = []
-    for radar_file in os.listdir(folder):
+    radar_list = os.listdir(folder)
+    sorted_list = sorted(radar_list)
+
+    for radar_file in sorted_list:
     #Local file option:
         #Loop over all files in the dataset and pull out each 0.5 degree tilt for analysis
         try:

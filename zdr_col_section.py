@@ -126,7 +126,15 @@ def zdrcol(zdrrc,ZDRrmasked,CC_c,REFrmasked,grad_ffd,grad_mag,KDP,ZDR_sum_stuff,
                         COL_X[:,12] = storm_area
                         COL_X[:,13] = xc
                         COL_X[:,14] = yc
-                        pred_col = forest_loaded_col.predict(COL_X)
+                        #pred_col = forest_loaded_col.predict(COL_X)
+                        pred_col = forest_loaded_col.predict_proba(COL_X)[:,1]
+                        print(pred_col)
+                        col_prob_t = 0.50
+                        if pred_col[0] >= col_prob_t:
+                            pred_col[0] = 1
+                        else:
+                            pred_col[0] = 0
+
                         if pred_col[0]==1:
                             col_path = polypath
                             col_areas.append((pr_area))
