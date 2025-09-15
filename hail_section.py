@@ -24,25 +24,25 @@ def hail_objects(hailc,REF_Hail2,ax,f,time_start,month,d_beg,h_beg,min_beg,sec_b
     hail_storm_lon = []
     hail_storm_lat = []
     if np.max(REF_Hail2) > 50.0:
-        for level in hailc.collections:
-            for contour_poly in level.get_paths(): 
-                for n_contour,contour in enumerate(contour_poly.to_polygons()):
-                    contour_a = np.asarray(contour[:])
-                    xa = contour_a[:,0]
-                    ya = contour_a[:,1]
-                    polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
-                    if n_contour == 0:
-                        polygon = polygon_new
-                    else:
-                        polygon = polygon.difference(polygon_new)
+        #for level in hailc.collections:
+        for contour_poly in hailc.get_paths(): 
+            for n_contour,contour in enumerate(contour_poly.to_polygons()):
+                contour_a = np.asarray(contour[:])
+                xa = contour_a[:,0]
+                ya = contour_a[:,1]
+                polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
+                #if n_contour == 0:
+                polygon = polygon_new
+                # else:
+                #     polygon = polygon.difference(polygon_new)
 
                 pr_area = (transform(proj, polygon).area * units('m^2')).to('km^2')
-                boundary = np.asarray(polygon.boundary.xy)
+                boundary = np.asarray(polygon.exterior.xy)
                 polypath = Path(boundary.transpose())
                 coord_map = np.vstack((rlons[0,:,:].flatten(), rlats[0,:,:].flatten())).T 
                 #Create an Mx2 array listing all the coordinates in field
                 mask_hail = polypath.contains_points(coord_map).reshape(rlons[0,:,:].shape)
-
+    
                 if pr_area > 2 * units('km^2'):
                     g = Geod(ellps='sphere')
                     dist_hail = np.zeros((np.asarray(max_lons_c).shape[0]))

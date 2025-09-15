@@ -8,6 +8,10 @@ import matplotlib.pyplot as plt
 from pyproj import Geod
 import csv
 from metpy.calc import wind_direction, wind_speed, wind_components
+from skl2onnx import to_onnx
+from skl2onnx.common.data_types import FloatTensorType
+from skl2onnx import convert_sklearn
+import onnxruntime as rt
 
 def rot_storm_matcher_qc(shear_maxes1,shear_lats1, shear_lons1,ax,f,time_start,month,d_beg,h_beg,min_beg,sec_beg,d_end,h_end,min_end,sec_end,rlons,rlats,max_lons_c,max_lats_c,proj, tracking_ind, rlons_2d, rlats_2d, REFall, KDPall, CCall, grad_ffd, grad_mag, ZDR_sum_stuff, az_masked, storm_relative_dir,station, dt, forest_loaded_meso, rot_lev):
     
@@ -23,7 +27,9 @@ def rot_storm_matcher_qc(shear_maxes1,shear_lats1, shear_lons1,ax,f,time_start,m
     rot_storm_lon2=[] 
     rot_storm_lat2=[]
     az_area2 = []
-    print(shear_maxes1, 'shear maxes')
+    #print(shear_maxes1, 'shear maxes')
+    #print(storm_relative_dir, 'sr dir')
+    storm_relative_dir1 = np.mean(storm_relative_dir)
     
     for i in range(len(shear_maxes1)):
         g = Geod(ellps='sphere')
@@ -36,17 +42,20 @@ def rot_storm_matcher_qc(shear_maxes1,shear_lats1, shear_lons1,ax,f,time_start,m
                                max_lons_c[j], max_lats_c[j])
             dist_rot[j] = distance_rot[2]/1000.
             back_rot[j] = distance_rot[1]
+            #print(back_rot)
             if distance_rot[1] < 0:
                 back_rot[j] = distance_rot[1] + 360
-            forw_rot[j] = np.abs(back_rot[j] - storm_relative_dir)
-            rawangle_rot[j] = back_rot[j] - storm_relative_dir
+            #print(back_rot[j], 'back rot')
+            #print(storm_relative_dir[i], 'srdir')
+            forw_rot[j] = np.abs(back_rot[j] - storm_relative_dir1)
+            rawangle_rot[j] = back_rot[j] - storm_relative_dir1
             #Account for weird angles
             if forw_rot[j] > 180:
                 forw_rot[j] = 360 - forw_rot[j]
                 rawangle_rot[j] = (360-forw_rot[j])*(-1)
             rawangle_rot[j] = rawangle_rot[j]*(-1)
         if np.min(np.asarray(dist_rot)) < 30.0:
-            print('got a close one')
+            #print('got a close one')
             rot_mag1.append((shear_maxes1[i]))
             rot_lon1.append((shear_lons1[i]))
             rot_lat1.append((shear_lats1[i]))
@@ -74,8 +83,8 @@ def rot_storm_matcher_qc(shear_maxes1,shear_lats1, shear_lons1,ax,f,time_start,m
             ZDRdpost = ZDR_sum_stuff[xminlat-postsize:xminlat+postsize, yminlon-postsize:yminlon+postsize]
             azpost = az_masked[rot_lev,xminlat-postsize:xminlat+postsize, yminlon-postsize:yminlon+postsize]
 
-            print('shape of az', np.shape(azpost[azpost>(.002*493)].flatten()))
-            print('points in square', np.shape(azpost.flatten()))
+            #print('shape of az', np.shape(azpost[azpost>(.002*493)].flatten()))
+            #print('points in square', np.shape(azpost.flatten()))
 
             #print('az percent area', np.shape(azpost[azpost>(.002*493)].flatten())[0]/np.shape(azpost.flatten())[0])
             try:
@@ -133,9 +142,15 @@ def rot_storm_matcher_qc(shear_maxes1,shear_lats1, shear_lons1,ax,f,time_start,m
             MESO_X[:,11] = rot_90
             MESO_X[:,12] = xc
             MESO_X[:,13] = yc
-            
-            pred_meso = forest_loaded_meso.predict(MESO_X)
+            MESO_X[np.isnan(MESO_X)]=-9999.0
+            #Update prediction to use Onyx
+            input_name = forest_loaded_meso.get_inputs()[0].name
+            label_name = forest_loaded_meso.get_outputs()[0].name
+            pred_meso = forest_loaded_meso.run([label_name], {input_name: MESO_X.astype(np.float32)})[0]
+            #pred_meso = forest_loaded_meso.predict(MESO_X)
+
             if pred_meso[0]==1:
+                print(shear_maxes1[i], shear_lons1[i], shear_lats1[i])
                 rot_mag2.append((shear_maxes1[i]))
                 az_area2.append((az_area))
                 rot_lon2.append((shear_lons1[i]))

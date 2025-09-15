@@ -14,22 +14,22 @@ def kdp_objects(kdpc,KDPmasked,ax,f,time_start,month,d_beg,h_beg,min_beg,sec_beg
     kdp_storm_lon = []
     kdp_storm_lat = []
     if np.max(KDPmasked) > kdplev:
-        for level in kdpc.collections:
-            for contour_poly in level.get_paths(): 
-                for n_contour,contour in enumerate(contour_poly.to_polygons()):
-                    contour_a = np.asarray(contour[:])
-                    xa = contour_a[:,0]
-                    ya = contour_a[:,1]
-                    polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
-                    if n_contour == 0:
-                        polygon = polygon_new
-                    else:
-                        polygon = polygon.difference(polygon_new)
+        #for level in kdpc.collections:
+        for contour_poly in kdpc.get_paths(): 
+            for n_contour,contour in enumerate(contour_poly.to_polygons()):
+                contour_a = np.asarray(contour[:])
+                xa = contour_a[:,0]
+                ya = contour_a[:,1]
+                polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
+                #if n_contour == 0:
+                polygon = polygon_new
+                # else:
+                #     polygon = polygon.difference(polygon_new)
                 try:
                     pr_area = (transform(proj, polygon).area * units('m^2')).to('km^2')
                 except:
                     continue
-                boundary = np.asarray(polygon.boundary.xy)
+                boundary = np.asarray(polygon.exterior.xy)
                 polypath = Path(boundary.transpose())
                 coord_map = np.vstack((rlons[0,:,:].flatten(), rlats[0,:,:].flatten())).T # create an Mx2 array listing all the coordinates in field
                 mask_kdp = polypath.contains_points(coord_map).reshape(rlons[0,:,:].shape)
@@ -40,7 +40,7 @@ def kdp_objects(kdpc,KDPmasked,ax,f,time_start,month,d_beg,h_beg,min_beg,sec_beg
                                 distance_kdp = g.inv(polygon.centroid.x, polygon.centroid.y,
                                                        max_lons_c[i], max_lats_c[i])
                                 dist_kdp[i] = distance_kdp[2]/1000.
-
+    
                     try:
                         if np.min(np.asarray(dist_kdp)) < 15.0 and np.max((np.max(KDPmasked[mask_kdp])) > 1.5):
                             kdp_path = polypath

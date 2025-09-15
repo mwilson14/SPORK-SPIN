@@ -7,6 +7,10 @@ from matplotlib.patches import PathPatch
 import matplotlib.pyplot as plt
 from pyproj import Geod
 from metpy.calc import wind_direction, wind_speed, wind_components
+from skl2onnx import to_onnx
+from skl2onnx.common.data_types import FloatTensorType
+from skl2onnx import convert_sklearn
+import onnxruntime as rt
 
 def zdrcol(zdrrc,ZDRrmasked,CC_c,REFrmasked,grad_ffd,grad_mag,KDP,ZDR_sum_stuff,KDPrmasked,depth_levels,forest_loaded_col,ax,f,time_start,month,d_beg,h_beg,min_beg,sec_beg,d_end,h_end,min_end,sec_end,rlons,rlats,max_lons_c,max_lats_c,ref_areas,proj,storm_relative_dir,tracking_ind,object_number):
     col_areas = []
@@ -18,20 +22,20 @@ def zdrcol(zdrrc,ZDRrmasked,CC_c,REFrmasked,grad_ffd,grad_mag,KDP,ZDR_sum_stuff,
     col_storm_lat = []
     col_masks = []
     if np.max(ZDRrmasked) > 1.0:
-        for level in zdrrc.collections:
-            for contour_poly in level.get_paths(): 
-                for n_contour,contour in enumerate(contour_poly.to_polygons()):
-                    contour_a = np.asarray(contour[:])
-                    xa = contour_a[:,0]
-                    ya = contour_a[:,1]
-                    polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
-                    if n_contour == 0:
-                        polygon = polygon_new
-                    else:
-                        polygon = polygon.difference(polygon_new)
+        #for level in zdrrc.collections:
+        for contour_poly in zdrrc.get_paths(): 
+            for n_contour,contour in enumerate(contour_poly.to_polygons()):
+                contour_a = np.asarray(contour[:])
+                xa = contour_a[:,0]
+                ya = contour_a[:,1]
+                polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
+                #if n_contour == 0:
+                polygon = polygon_new
+                # else:
+                #     polygon = polygon.difference(polygon_new)
                 try:
                     pr_area = (transform(proj, polygon).area * units('m^2')).to('km^2')
-                    boundary = np.asarray(polygon.boundary.xy)
+                    boundary = np.asarray(polygon.exterior.xy)
                     polypath = Path(boundary.transpose())
                     coord_map = np.vstack((rlons[0,:,:].flatten(), rlats[0,:,:].flatten())).T # create an Mx2 array listing all the coordinates in field
                     mask_col = polypath.contains_points(coord_map).reshape(rlons[0,:,:].shape)
@@ -55,12 +59,12 @@ def zdrcol(zdrrc,ZDRrmasked,CC_c,REFrmasked,grad_ffd,grad_mag,KDP,ZDR_sum_stuff,
                     mean_kdpcol = np.nan
                     col_depth = np.nan
                     mean_kdp_r = np.nan
-
+    
                 try:
                     max_depth = np.max(col_depth)
                     mean_depth = np.mean(col_depth)
                 except:
-                    print('col_depth', col_depth)
+                    #print('col_depth', col_depth)
                     max_depth = np.nan
                     mean_depth = np.nan
                 if (pr_area > 2 * units('km^2')) and (mean_col > 1):
@@ -76,6 +80,8 @@ def zdrcol(zdrrc,ZDRrmasked,CC_c,REFrmasked,grad_ffd,grad_mag,KDP,ZDR_sum_stuff,
                                 back_col[i] = distance_col[1]
                                 if distance_col[1] < 0:
                                     back_col[i] = distance_col[1] + 360
+                                #print('forw_col', forw_col[i])
+                                #print('storm_relative_dir', storm_relative_dir)
                                 forw_col[i] = np.abs(back_col[i] - storm_relative_dir)
                                 rawangle_col[i] = back_col[i] - storm_relative_dir
                                 #Account for weird angles
@@ -83,7 +89,7 @@ def zdrcol(zdrrc,ZDRrmasked,CC_c,REFrmasked,grad_ffd,grad_mag,KDP,ZDR_sum_stuff,
                                     forw_col[i] = 360 - forw_col[i]
                                     rawangle_col[i] = (360-forw_col[i])*(-1)
                                 rawangle_col[i] = rawangle_col[i]*(-1)
-
+    
                     if np.min(np.asarray(dist_col)) < 30.0:
                         #Use ML algorithm to eliminate non-arc objects
                         #Get x and y components
@@ -97,18 +103,18 @@ def zdrcol(zdrrc,ZDRrmasked,CC_c,REFrmasked,grad_ffd,grad_mag,KDP,ZDR_sum_stuff,
                         #         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                         #         writer.writerow({'number': object_number, 'hour': hour, 'minute': minute, 'area': pr_area.magnitude, 'distance': np.min(dist_col), 'angle': rawangle_col[np.where(dist_col == np.min(dist_col))[0][0]], 'mean': mean_col, 'max': np.max(ZDRrmasked[mask_col]), 'mean_cc': mean_cccol, 'mean_kdp': mean_kdpcol, 'mean_Z': mean_Zcol, 'mean_graddir': mean_graddircol.magnitude, 'mean_grad': mean_gradcol.magnitude, 'max_depth': max_depth, 'mean_depth': mean_depth, 'col_mean_kdp': mean_kdp_r, 'storm_area': storm_area})
                         #     object_number=object_number+1
-
+    
                         #Change this to rawangle once that switch has been made in the ML algorithm
                         if (rawangle_col[np.where(dist_col == np.min(dist_col))[0][0]] > 0):
                             directions_raw = 360 - rawangle_col[np.where(dist_col == np.min(dist_col))[0][0]]
                         else:
                             directions_raw = (-1) * rawangle_col[np.where(dist_col == np.min(dist_col))[0][0]]
-
+    
                         if storm_area < 200:
                             storm_area = 200
                         
                         dist_norm = np.min(dist_col)/np.sqrt(storm_area/np.pi)
-
+    
                         xc, yc = wind_components(dist_norm*units('m/s'), directions_raw * units('degree'))
                         COL_X = np.zeros((1, 15))
                         COL_X[:,0] = pr_area.magnitude
@@ -126,15 +132,20 @@ def zdrcol(zdrrc,ZDRrmasked,CC_c,REFrmasked,grad_ffd,grad_mag,KDP,ZDR_sum_stuff,
                         COL_X[:,12] = storm_area
                         COL_X[:,13] = xc
                         COL_X[:,14] = yc
+                        COL_X[np.isnan(COL_X)]=-9999
                         #pred_col = forest_loaded_col.predict(COL_X)
-                        pred_col = forest_loaded_col.predict_proba(COL_X)[:,1]
-                        print(pred_col)
+                        #Replace this with the Onyx version
+                        #pred_col = forest_loaded_col.predict_proba(COL_X)[:,1]
+                        input_name = forest_loaded_col.get_inputs()[0].name
+                        label_name = forest_loaded_col.get_outputs()[0].name
+                        pred_col = forest_loaded_col.run([label_name], {input_name: COL_X.astype(np.float32)})[0]
+                        #print(pred_col)
                         col_prob_t = 0.50
                         if pred_col[0] >= col_prob_t:
                             pred_col[0] = 1
                         else:
                             pred_col[0] = 0
-
+    
                         if pred_col[0]==1:
                             col_path = polypath
                             col_areas.append((pr_area))

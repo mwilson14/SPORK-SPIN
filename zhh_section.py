@@ -15,21 +15,21 @@ def zhh_objects(zhhc,REFmasked,rlons,rlats,max_lons_c,max_lats_c,proj):
     zhh_storm_lat = []
     zhh_core_avg = []
     if np.max(REFmasked) > 35.0:
-        for level in zhhc.collections:
-            for contour_poly in level.get_paths(): 
-                for n_contour,contour in enumerate(contour_poly.to_polygons()):
-                    contour_a = np.asarray(contour[:])
-                    xa = contour_a[:,0]
-                    ya = contour_a[:,1]
-                    polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
-                    if n_contour == 0:
-                        polygon = polygon_new
-                    else:
-                        polygon = polygon.difference(polygon_new)
-                        
+        #for level in zhhc.collections:
+        for contour_poly in zhhc.get_paths(): 
+            for n_contour,contour in enumerate(contour_poly.to_polygons()):
+                contour_a = np.asarray(contour[:])
+                xa = contour_a[:,0]
+                ya = contour_a[:,1]
+                polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
+                #if n_contour == 0:
+                polygon = polygon_new
+                # else:
+                #     polygon = polygon.difference(polygon_new)
+                    
                 try:
                     pr_area = (transform(proj, polygon).area * units('m^2')).to('km^2')
-                    boundary = np.asarray(polygon.boundary.xy)
+                    boundary = np.asarray(polygon.exterior.xy)
                     polypath = Path(boundary.transpose())
                     coord_map = np.vstack((rlons[0,:,:].flatten(), rlats[0,:,:].flatten())).T # create an Mx2 array listing all the coordinates in field
                     mask_zhh = polypath.contains_points(coord_map).reshape(rlons[0,:,:].shape)
@@ -47,7 +47,7 @@ def zhh_objects(zhhc,REFmasked,rlons,rlats,max_lons_c,max_lats_c,proj):
                             for j in range(rlons_mask.shape[0]):
                                 dist_zhh = g.inv(rlons_mask[j], rlats_mask[j], max_lons_c[i], max_lats_c[i])
                                 distance_zhh[j] = dist_zhh[2]/1000.0
-
+    
                             if np.min(distance_zhh)<0.5:
                                 zhh_areas.append((pr_area))
                                 zhh_centroid_lon.append((polygon.centroid.x))

@@ -51,6 +51,12 @@ from kdpfoot_section import kdp_objects
 from zdr_col_section import zdrcol
 from rotation_stuff import get_rotation
 from rotation_matching_qc import rot_storm_matcher_qc
+import threading
+from skl2onnx import to_onnx
+from skl2onnx.common.data_types import FloatTensorType
+from skl2onnx import convert_sklearn
+import onnxruntime as rt
+
 
 def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev1, big_storm, zero_z_trigger, storm_to_track, year, month, day, hour, start_min, duration, calibration, station, h_Z0C, Bunkers_m, track_dis=10, GR_mins=5.0):
     #Set vector perpendicular to FFD Z gradient
@@ -100,9 +106,13 @@ def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev
     f.write("Refresh: 8 \n \n")
 
     #Load ML algorithm
-    forest_loaded = pickle.load(open('NewData2022RandomForest.pkl', 'rb'))
-    forest_loaded_col = pickle.load(open('NewDataRandomForest_2022COLUMNS.pkl', 'rb'))
-    forest_loaded_mesos = pickle.load(open('NewDataRandomForest_MESOS.pkl', 'rb'))
+    #Reworking this to work with Onyx
+    forest_loaded = rt.InferenceSession("NewData2022RandomForest.onnx", providers=["CPUExecutionProvider"])
+    forest_loaded_col = rt.InferenceSession("NewDataRandomForest_2022COLUMNS.onnx", providers=["CPUExecutionProvider"])
+    forest_loaded_mesos = rt.InferenceSession("NewDataRandomForest_MESOS.onnx", providers=["CPUExecutionProvider"])
+    # forest_loaded = pickle.load(open('NewData2022RandomForest.pkl', 'rb'))
+    # forest_loaded_col = pickle.load(open('NewDataRandomForest_2022COLUMNS.pkl', 'rb'))
+    # forest_loaded_mesos = pickle.load(open('NewDataRandomForest_MESOS.pkl', 'rb'))    
 
     #Actual algorithm code starts here
     #Create a list for the lists of arc outlines
@@ -831,6 +841,10 @@ def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev
             p_col_depths = []
             p_kdp_areas = []
             p_kdp_maxes = []
+            p_ams_zdr_lon = []
+            p_ams_zdr_lat = []
+            p_ams_kdp_lon = []
+            p_ams_kdp_lat = []
             for storm in enumerate(max_lons_c):
                 matching_ind = np.flatnonzero(np.isclose(max_lons_c[storm[0]], zdr_con_storm_lon, rtol=1e-05))
                 if matching_ind.shape[0] > 0:
@@ -843,6 +857,11 @@ def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev
                     p_zdr_median.append((zdr_con_median[matching_ind[0]]))
                     p_separations.append((shaped_dist[matching_ind[0]]))
                     p_sp_angle.append((shaped_ang[matching_ind[0]]))
+                    p_ams_zdr_lon.append((zdr_con_centroid_lon[matching_ind[0]]))
+                    p_ams_zdr_lat.append((zdr_con_centroid_lat[matching_ind[0]]))
+                    p_ams_kdp_lon.append((kdp_con_centroid_lon[matching_ind[0]]))
+                    p_ams_kdp_lat.append((kdp_con_centroid_lat[matching_ind[0]]))
+
                 else:
                     p_zdr_areas.append((0))
                     p_zdr_maxes.append((0))
@@ -853,6 +872,10 @@ def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev
                     p_zdr_median.append((0))
                     p_separations.append((0))
                     p_sp_angle.append((0))
+                    p_ams_zdr_lon.append((0))
+                    p_ams_zdr_lat.append((0))
+                    p_ams_kdp_lon.append((0))
+                    p_ams_kdp_lat.append((0))
 
                 matching_ind_hail = np.flatnonzero(np.isclose(max_lons_c[storm[0]], hail_con_storm_lon, rtol=1e-05))
                 if matching_ind_hail.shape[0] > 0:
@@ -1011,7 +1034,14 @@ def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev
             p_col_depths = []
             p_kdp_areas = []
             p_kdp_maxes = []
+            p_ams_zdr_lon = []
+            p_ams_zdr_lat = []
+            p_ams_kdp_lon = []
+            p_ams_kdp_lat = []
+            p_radar_lon = []
+            p_radar_lat = []
             storm_times = time_start
+	    
         
         
 
@@ -1050,6 +1080,12 @@ def multi_case_algorithm_2020(storm_relative_dir, zdrlev, kdplev, REFlev, REFlev
             'column_area' : p_col_areas,
             'column_max_depth' : p_col_max_depths,
             'column_mean_depth' : p_col_depths,
+            'AMS_zdr_lon' : p_ams_zdr_lon,
+            'AMS_zdr_lat' : p_ams_zdr_lat,
+            'AMS_kdp_lon' : p_ams_kdp_lon,
+            'AMS_kdp_lat' : p_ams_kdp_lat,
+            'AMS_radar_lon' : cenlon,
+            'AMS_radar_lat' : cenlat,
             'times' : storm_times
         })
         new_cells.set_index(['scan', 'storm_id'], inplace=True)

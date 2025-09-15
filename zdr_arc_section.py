@@ -6,6 +6,10 @@ from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 from pyproj import Geod
 from metpy.calc import wind_direction, wind_speed, wind_components
+from skl2onnx import to_onnx
+from skl2onnx.common.data_types import FloatTensorType
+from skl2onnx import convert_sklearn
+import onnxruntime as rt
 
 def zdrarc(zdrc,ZDRmasked,CC,REF,grad_ffd,grad_mag,KDP,forest_loaded,ax,f,time_start,month,d_beg,h_beg,min_beg,sec_beg,d_end,h_end,min_end,sec_end,rlons,rlats,max_lons_c,max_lats_c,zdrlev,proj,storm_relative_dir,Outer_r,Inner_r,tracking_ind):
     #Inputs,
@@ -44,22 +48,22 @@ def zdrarc(zdrc,ZDRmasked,CC,REF,grad_ffd,grad_mag,KDP,forest_loaded,ax,f,time_s
     zdr_outlines = []
     if np.max(ZDRmasked) > zdrlev:
         #Break contours into polygons using the same method as for reflectivity
-        for level in zdrc.collections:
-            for contour_poly in level.get_paths(): 
-                for n_contour,contour in enumerate(contour_poly.to_polygons()):
-                    contour_a = np.asarray(contour[:])
-                    xa = contour_a[:,0]
-                    ya = contour_a[:,1]
-                    polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
-                    if n_contour == 0:
-                        polygon = polygon_new
-                    else:
-                        polygon = polygon.difference(polygon_new)
+        #for level in zdrc.collections:
+        for contour_poly in zdrc.get_paths(): 
+            for n_contour,contour in enumerate(contour_poly.to_polygons()):
+                contour_a = np.asarray(contour[:])
+                xa = contour_a[:,0]
+                ya = contour_a[:,1]
+                polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
+                #if n_contour == 0:
+                polygon = polygon_new
+                # else:
+                #     polygon = polygon.difference(polygon_new)
                 try:
                     pr_area = (transform(proj, polygon).area * units('m^2')).to('km^2')
                 except:
                     continue
-                boundary = np.asarray(polygon.boundary.xy)
+                boundary = np.asarray(polygon.exterior.xy)
                 polypath = Path(boundary.transpose())
                 coord_map = np.vstack((rlons[0,:,:].flatten(), rlats[0,:,:].flatten())).T 
                 mask = polypath.contains_points(coord_map).reshape(rlons[0,:,:].shape)
@@ -92,7 +96,7 @@ def zdrarc(zdrc,ZDRmasked,CC,REF,grad_ffd,grad_mag,KDP,forest_loaded,ax,f,time_s
                                     rawangle[i] = (360-forw[i])*(-1)
                                 dist[i] = distance_1[2]/1000.
                                 rawangle[i] = rawangle[i]*(-1)
-
+    
                     #Pick out only ZDR arc objects with a reasonable probability of actually being in the FFD region
                     #using their location relative to the storm centroid
                     if (forw[np.where(dist == np.min(dist))[0][0]] < 180 and np.min(dist) < Outer_r) or (forw[np.where(dist == np.min(dist))[0][0]] < 140 and np.min(dist) < Inner_r):
@@ -102,7 +106,7 @@ def zdrarc(zdrc,ZDRmasked,CC,REF,grad_ffd,grad_mag,KDP,forest_loaded,ax,f,time_s
                             directions_raw = 360 - rawangle[np.where(dist == np.min(dist))[0][0]]
                         else:
                             directions_raw = (-1) * rawangle[np.where(dist == np.min(dist))[0][0]]
-
+    
                         xc, yc = wind_components(np.min(dist)*units('m/s'), directions_raw * units('degree'))
                         ARC_X = np.zeros((1, 12))
                         ARC_X[:,0] = pr_area.magnitude
@@ -117,7 +121,12 @@ def zdrarc(zdrc,ZDRmasked,CC,REF,grad_ffd,grad_mag,KDP,forest_loaded,ax,f,time_s
                         ARC_X[:,9] = rawangle[np.where(dist == np.min(dist))[0][0]]
                         ARC_X[:,10] = xc
                         ARC_X[:,11] = yc
-                        pred_zdr = forest_loaded.predict(ARC_X)
+                        ARC_X[np.isnan(ARC_X)] = -9999.0
+                        #Update prediction to use Onyx
+                        input_name = forest_loaded.get_inputs()[0].name
+                        label_name = forest_loaded.get_outputs()[0].name
+                        pred_zdr = forest_loaded.run([label_name], {input_name: ARC_X.astype(np.float32)})[0]
+                        #pred_zdr = forest_loaded.predict(ARC_X)
                         if (pred_zdr[0]==1):
                             zdr_storm_lon.append((max_lons_c[np.where(dist == np.min(dist))[0][0]]))
                             zdr_storm_lat.append((max_lats_c[np.where(dist == np.min(dist))[0][0]]))
@@ -143,7 +152,7 @@ def zdrarc(zdrc,ZDRmasked,CC,REF,grad_ffd,grad_mag,KDP,forest_loaded,ax,f,time_s
                                 f.write(", ")
                                 f.write("%.5f" %(zdr_polypath.vertices[i][0]))
                                 f.write('\n')
-
+    
                             f.write("End: \n \n")
                             f.flush()
                             if (((max_lons_c[np.where(dist == np.min(dist))[0][0]]) in max_lons_c[tracking_ind]) and ((max_lats_c[np.where(dist == np.min(dist))[0][0]]) in max_lats_c[tracking_ind])):

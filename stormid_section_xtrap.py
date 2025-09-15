@@ -32,19 +32,20 @@ def storm_objects_new(refc,proj,REFlev,REFlev1,big_storm,smoothed_ref,ax,rlons,r
     max_lats_c = []
     storm_ids = []
     if np.max(smoothed_ref) > REFlev[0]:
-        for level in refc.collections:
-            #Loops through each closed reflectivity polygon in the contour list
-            for contour_poly in level.get_paths(): 
-                for n_contour,contour in enumerate(contour_poly.to_polygons()):
-                    contour_a = np.asarray(contour[:])
-                    xa = contour_a[:,0]
-                    ya = contour_a[:,1]
-                    polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
-                    #Eliminates 'holes' in the polygons
-                    if n_contour == 0:
-                        polygon = polygon_new
-                    else:
-                        polygon = polygon.difference(polygon_new)
+        #for level in refc.collections:
+    # for level in refc.levels:
+        #Loops through each closed reflectivity polygon in the contour list
+        for contour_poly in refc.get_paths(): 
+            for n_contour,contour in enumerate(contour_poly.to_polygons()):
+                contour_a = np.asarray(contour[:])
+                xa = contour_a[:,0]
+                ya = contour_a[:,1]
+                polygon_new = geometry.Polygon([(i[0], i[1]) for i in zip(xa,ya)])
+                #Eliminates 'holes' in the polygons
+                #if n_contour == 0:
+                polygon = polygon_new
+                # else:
+                #     polygon = polygon.difference(polygon_new)
 
                 #Transform the polygon's coordinates to the proper projection and calculate area
                 #Testing a try statement here to eliminate some errors
@@ -53,7 +54,7 @@ def storm_objects_new(refc,proj,REFlev,REFlev1,big_storm,smoothed_ref,ax,rlons,r
                 except:
                     continue
                 #Use the polygon boundary to select all points within the polygon via a mask
-                boundary = np.asarray(polygon.boundary.xy)
+                boundary = np.asarray(polygon.exterior.xy)
                 polypath = Path(boundary.transpose())
                 coord_map = np.vstack((rlons[0,:,:].flatten(), rlats[0,:,:].flatten())).T 
                 maskr = polypath.contains_points(coord_map).reshape(rlons[0,:,:].shape)
@@ -72,22 +73,22 @@ def storm_objects_new(refc,proj,REFlev,REFlev1,big_storm,smoothed_ref,ax,rlons,r
                         
                         #This section uses the 2nd reflectivity threshold to subdivide big storms, in a similar manner to the 
                         #previous section's method for finding storms
-                        refc1 = ax.contour(rlon2m,rlat2m,smoothed_ref_m,REFlev1, linewidths = 3, linestyle = '--', alpha=.01)
+                        refc1 = ax.contour(rlon2m,rlat2m,smoothed_ref_m,REFlev1, linewidths = 3, linestyle = '--', alpha=.5)
                         #Look for reflectivity centroids
-                        for level1 in refc1.collections:
-                            for contour_poly1 in level1.get_paths(): 
-                                for n_contour1,contour1 in enumerate(contour_poly1.to_polygons()):
-                                    contour_a1 = np.asarray(contour1[:])
-                                    xa1 = contour_a1[:,0]
-                                    ya1 = contour_a1[:,1]
-                                    polygon_new1 = geometry.Polygon([(i[0], i[1]) for i in zip(xa1,ya1)])
-                                    if n_contour1 == 0:
-                                        polygon1 = polygon_new1
-                                    else:
-                                        polygon1 = polygon1.difference(polygon_new1)
-
+                        #or level1 in refc1.collections:
+                        for contour_poly1 in refc1.get_paths(): 
+                            for n_contour1,contour1 in enumerate(contour_poly1.to_polygons()):
+                                contour_a1 = np.asarray(contour1[:])
+                                xa1 = contour_a1[:,0]
+                                ya1 = contour_a1[:,1]
+                                polygon_new1 = geometry.Polygon([(i[0], i[1]) for i in zip(xa1,ya1)])
+                                #if n_contour1 == 0:
+                                polygon1 = polygon_new1
+                                # else:
+                                #     polygon1 = polygon1.difference(polygon_new1)
+    
                                 pr_area1 = (transform(proj, polygon1).area * units('m^2')).to('km^2')
-                                boundary1 = np.asarray(polygon1.boundary.xy)
+                                boundary1 = np.asarray(polygon1.exterior.xy)
                                 polypath1 = Path(boundary1.transpose())
                                 maskr1 = polypath1.contains_points(coord_map).reshape(rlons[0,:,:].shape)
                                 meanr1 = np.mean(smoothed_ref[maskr1])
@@ -127,7 +128,7 @@ def storm_objects_new(refc,proj,REFlev,REFlev1,big_storm,smoothed_ref,ax,rlons,r
                                             storm_sec = storm_dur.seconds
                                         except:
                                             storm_sec=0
-
+        
                                         prj_lon, prj_lat, prj_bear = g.fwd(max_lons_p, max_lats_p, bearings, speeds_p*storm_sec)
                                         ax.scatter(prj_lon, prj_lat, s=200, color='r')
                                         dist_track = np.zeros((np.asarray(prj_lon).shape[0]))
@@ -140,7 +141,7 @@ def storm_objects_new(refc,proj,REFlev,REFlev1,big_storm,smoothed_ref,ax,rlons,r
                                         else:
                                             storm_ids.append((storm_index))
                                             storm_index = storm_index + 1
-
+    
                     #Do the same thing for objects from the 1st reflectivity threshold
                     else:
                         ref_areas.append((pr_area.magnitude))
@@ -178,7 +179,7 @@ def storm_objects_new(refc,proj,REFlev,REFlev1,big_storm,smoothed_ref,ax,rlons,r
                                     storm_sec = storm_dur.seconds
                                 except:
                                     storm_sec=0
-
+    
                                 prj_lon, prj_lat, prj_bear = g.fwd(max_lons_p, max_lats_p, bearings, speeds_p*storm_sec)
                                 ax.scatter(prj_lon, prj_lat, s=200, color='r')
                                 dist_track = np.zeros((np.asarray(prj_lon).shape[0]))
@@ -186,7 +187,7 @@ def storm_objects_new(refc,proj,REFlev,REFlev1,big_storm,smoothed_ref,ax,rlons,r
                                     distance_track = g.inv(polygon.centroid.x, polygon.centroid.y,
                                                            prj_lon[i], prj_lat[i])
                                     dist_track[i] = distance_track[2]/1000.
-
+    
                                 if np.min(dist_track) < track_dis:
                                     storm_ids.append((storm_ids_p[np.where(dist_track == np.min(dist_track))[0][0]]))
                                 else:
